@@ -1,6 +1,4 @@
-Here’s the draft of the **README** based on your inputs:
 
----
 
 # **GPROX: An ACME DNS Proxy for Google Cloud DNS**
 
