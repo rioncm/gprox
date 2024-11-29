@@ -1,0 +1,38 @@
+# gprox Configuration
+
+# Logging settings
+log_level: INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+# INFO is recommended for production to reduce log verbosity. Use DEBUG only for troubleshooting.
+
+# Google Cloud settings
+gcloud_service_account: /etc/gprox/google.json  # Path to the service account JSON file.
+# Ensure the service account JSON file has the minimum required permissions (roles/dns.admin).
+gcloud_project: YOUR_GOOGLE_CLOUD_PROJECT  # Replace with your Google Cloud project ID.
+
+# Managed Zones
+# Define the managed zones that can be accessed and updated by this proxy.
+# This acts as a security filter, ensuring only specific zones are modified.
+# Format: <zone_name>: <zone_dns_name>
+# zone_name: The name of the managed zone in Google Cloud DNS (e.g., domain-com or subdomain-domain-com).
+# zone_dns_name: The fully qualified domain name (FQDN) for the zone.
+
+
+managed_zones: 
+  example-com: example.com
+  anotherexample-example-com: anotherexample.example.com
+# Add additional zones as needed.
+
+# Security settings
+# api_keys: List of valid API keys for accessing the gprox API.
+# Each key should follow a predictable format for easy identification (e.g., user or purpose appended).
+# Example: <unique-key>_<user-or-purpose>
+# These keys are logged during use to trace actions to specific users or systems.
+
+api_keys:
+  - a730c187a975_user1-larry.franklin  # Key for user Larry Franklin
+  - f0840619c0e8_user2-jon.doe         # Key for user Jon Doe
+  # Ensure API keys are unique, long, and unpredictable.
+
+# DNS settings
+ttl: 300  # Default TTL for DNS records (in seconds).
+# Adjust TTL based on your DNS propagation needs. Shorter TTLs may increase query traffic.

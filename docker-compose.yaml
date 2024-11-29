@@ -1,0 +1,46 @@
+services:
+  gprox:
+    build:
+      context: .  # Assumes the Dockerfile is in the current directory
+    container_name: gprox
+    # ports: #Not needed if using a reverse proxy
+    #   - "8080:8080"  # Maps host port 8080 to container port 8080
+    
+    labels:                             #The lables show below are for Traefik reverse proxy in my enviornment. Customize or remove as needed.
+        - "traefik.enable=true"
+
+        # HTTP Router (for redirecting to HTTPS)
+        - "traefik.http.routers.gprox-http.rule=Host(`HOST.example.com`)"
+        - "traefik.http.routers.gprox-http.entrypoints=http"
+        - "traefik.http.routers.gprox-http.middlewares=gprox-https-redirect"
+
+        # HTTPS Router (for handling secure traffic)
+        - "traefik.http.routers.gprox.rule=Host(`HOST.example.com`)"
+        - "traefik.http.routers.gprox.entrypoints=https"
+        - "traefik.http.routers.gprox.tls=true"
+        - "traefik.http.routers.gprox.tls.certresolver=letsencrypt"
+
+        # Redirect HTTP to HTTPS
+        - "traefik.http.middlewares.gprox-https-redirect.redirectscheme.scheme=https"
+
+        # Service definition
+        - "traefik.http.services.gprox.loadbalancer.server.port=8080"
+        - "traefik.docker.network=web"
+
+        # Add Headers to Inform container of HTTPS
+        - "traefik.http.middlewares.gprox-https-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+        - "traefik.http.middlewares.gprox-https-headers.headers.customrequestheaders.X-Forwarded-Host=HOST.example.com"
+        - "traefik.http.middlewares.gprox-https-headers.headers.customrequestheaders.X-Forwarded-For"
+        - "traefik.http.routers.gprox.middlewares=gprox-https-headers"
+
+    environment:
+      - GPROX_CONFIG_PATH=/etc/gprox/config.yaml
+    volumes:
+      - ./config.yaml:/etc/gprox/config.yaml:ro  # Mount the config file (read-only)
+      - ./gcloud.json:/etc/gprox/google.json:ro  # Mount the Google service account JSON (read-only)
+    restart: unless-stopped
+    networks:
+      - web
+networks:
+  web:
+    external: true
