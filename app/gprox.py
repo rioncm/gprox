@@ -250,6 +250,11 @@ def parse_fqdn(fqdn):
     stripped_fqdn = fqdn[len("_acme-challenge."):]
     logger.debug(f"Stripped FQDN: {stripped_fqdn}")
 
+     # Check if the stripped FQDN matches a managed zone for wildcards
+    for zone_name, zone_domain in managed_zones.items():
+        if stripped_fqdn == zone_domain:
+            return zone_name
+
       # Remove the trailing dot, if present
     if stripped_fqdn.endswith('.'):
         stripped_fqdn = stripped_fqdn[:-1]
