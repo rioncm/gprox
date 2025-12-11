@@ -171,6 +171,29 @@ Automate renewal and deployment using `acmerenew.sh` in a scheduled task.
 
 ---
 
+## **Releases & Container Publishing**
+
+Publishing a GitHub release automatically builds and pushes an image to the `blue-platypus` organization on the GitHub Container Registry (GHCR). The workflow defined in `.github/workflows/release.yml` performs the following whenever a release is published:
+
+- Uses the repository Dockerfile to build an image.
+- Tags the image with the release tag (e.g., `v1.2.3`), semantic variants (`1.2`, `1`), `latest`, and the commit SHA.
+- Pushes the image to `ghcr.io/blue-platypus/gprox`.
+
+### **Prerequisites**
+- Push this repository to the `blue-platypus` GitHub organization.
+- In the repository settings, ensure the default `GITHUB_TOKEN` has permission to write packages (Settings ➜ Actions ➜ General ➜ Workflow permissions).
+- After the first push, mark the `ghcr.io/blue-platypus/gprox` package as public in the GitHub UI so others can pull it.
+
+### **Release Flow**
+1. Tag the commit you want to release, e.g., `git tag v1.2.3 && git push origin v1.2.3`.
+2. Draft and publish a GitHub Release that uses that tag. Once the release status is “published,” the workflow runs automatically.
+3. Monitor the workflow run in the “Actions” tab to confirm the build and push succeeded.
+4. Pull the public image with `docker pull ghcr.io/blue-platypus/gprox:latest` or the exact release tag.
+
+You can also run the workflow manually from the “Actions” tab via **Run workflow** to produce ad-hoc builds (they are tagged with the commit SHA and `latest`).
+
+---
+
 ## **Security Considerations**
 
 - **API Key Management**:
