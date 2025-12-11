@@ -1,5 +1,5 @@
 # Use a lightweight Python 3.9 Alpine image as the base
-FROM python:3.9-alpine
+FROM python:3.12-alpine
 
 # Install required packages for the application and Google Cloud SDK
 # - curl: for downloading the Google Cloud SDK
@@ -20,6 +20,7 @@ ENV PATH="/google-cloud-sdk/bin:$PATH"
 # Copy the application code into the image
 # Assumes the application code is in a local `app` directory
 COPY app /app
+COPY requirements.txt /app/requirements.txt
 WORKDIR /app
 
 # Install required Python dependencies

@@ -70,6 +70,11 @@ def validate_fqdn(fqdn):
 def health():
     return jsonify({"status": "ok"})
 
+#Live Check
+@app.route('/v1/live', methods=['GET'])
+def live():
+    return jsonify({"status": "alive"})
+
 # Add TXT Record
 @app.route('/v1/dns/add', methods=['POST'])
 def add_txt_record():
