@@ -20,6 +20,7 @@ This guide demonstrates how to use `curl` to send requests to the GPROX containe
 ## **Endpoints Overview**
 
 - **Health Check**: `GET /v1/health`
+- **Health Check**: `GET /v1/live`
 - **Add TXT Record**: `POST /v1/dns/add`
 - **Remove TXT Record**: `POST /v1/dns/remove`
 
