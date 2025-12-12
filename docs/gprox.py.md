@@ -1,155 +1,66 @@
-### **Code Documentation for `gprox.py`**
+### **FastAPI Application Overview**
 
-Below is a detailed explanation and documentation of the `gprox.py` script. The script provides a RESTful API to add and remove TXT records for DNS challenges in Google Cloud DNS.
-
----
-
-### **Modules Used**
-- **`flask`**: Provides the web server and routing functionality for the API.
-- **`logging`**: Handles logging for debugging and error tracking.
-- **`yaml`**: Parses the configuration file.
-- **`os`**: Accesses environment variables.
-- **`googleapiclient.discovery`**: Interacts with Google Cloud DNS APIs.
-- **`google.oauth2.service_account`**: Authenticates using Google Cloud service account credentials.
-- **`ipaddress`**: (Currently unused but included) Handles IP validation for possible future network security checks.
+The original monolithic `gprox.py` script has been replaced with a modular FastAPI project. This document summarizes the major modules, how they interact, and where core functionality lives.
 
 ---
 
-### **Core Components**
+## **Core Modules (`app/core`)**
 
-#### 1. **Configuration Loading (`load_config`)**
-- **Purpose**: Loads the configuration file (`config.yaml`) from the path specified in the `GPROX_CONFIG_PATH` environment variable.
-- **Error Handling**:
-  - Raises an exception if the file is missing or incorrectly formatted.
-- **Configuration Keys**:
-  - `log_level`: Logging level (e.g., DEBUG, INFO).
-  - `gcloud_service_account`: Path to the Google Cloud service account JSON file.
-  - `gcloud_project`: Google Cloud project ID.
-  - `managed_zones`: Dictionary mapping zone names to domain names.
-  - `api_keys`: List of valid API keys.
-  - `ttl`: Default TTL for DNS records.
+- **`config.py`**
+  - Loads YAML configuration from `GPROX_CONFIG_PATH` (defaults to `/etc/gprox/config.yaml`) using Pydantic for validation.
+  - Exposes `Settings` (log level, Google Cloud information, managed zones, API keys, TTL) and a cached `get_settings()` helper for dependency injection.
 
-#### 2. **Logging Setup**
-- **Purpose**: Configures logging based on the `log_level` from the configuration.
-- **Logging Levels**:
-  - `DEBUG`: Detailed logs for debugging.
-  - `INFO`: General information.
-  - `WARNING`: Non-critical issues.
-  - `ERROR`: Critical errors.
-
-#### 3. **Google Cloud DNS Service Initialization (`get_dns_service`)**
-- **Purpose**: Authenticates with Google Cloud using the service account file and initializes the Google Cloud DNS API client.
-- **Error Handling**:
-  - Logs and raises errors if the service account file is missing or invalid.
-
-#### 4. **Health Check (`/v1/health`)**
-- **Endpoint**: `GET /v1/health`
-- **Purpose**: Returns a simple status response (`{"status": "ok"}`) to confirm the API is running.
+- **`logging.py`**
+  - Provides `configure_logging(level)` which normalizes the desired log level and applies a consistent log format for the entire service.
 
 ---
 
-### **Core Endpoints**
+## **Service Layer (`app/services`)**
 
-#### **1. Add TXT Record (`/v1/dns/add`)**
-- **Endpoint**: `POST /v1/dns/add`
-- **Input**:
-  - `api_key` (string): API key for authentication.
-  - `fqdn` (string): Fully qualified domain name (e.g., `_acme-challenge.domain.com`).
-  - `value` (string): Value of the TXT record.
-- **Response**:
-  - `207 Multi-Status`: Provides a per-FQDN status for the request.
-- **Logic**:
-  1. Validates the `api_key`.
-  2. Parses the `fqdn` to determine the matching managed zone.
-  3. Sends the request to Google Cloud DNS to create the TXT record.
-- **Error Handling**:
-  - Invalid API keys or FQDNs result in specific error messages.
+- **`dns_client.py`**
+  - Wraps Google service-account initialization and `googleapiclient.discovery.build('dns', 'v1')`.
+  - Caches the DNS client per service-account path, minimizing repeated auth initialization.
 
-#### **2. Remove TXT Record (`/v1/dns/remove`)**
-- **Endpoint**: `POST /v1/dns/remove`
-- **Input**:
-  - `api_key` (string): API key for authentication.
-  - `fqdn` (string): Fully qualified domain name.
-  - `value` (string): Value of the TXT record to remove.
-- **Response**:
-  - `207 Multi-Status`: Provides a per-FQDN status for the request.
-- **Logic**:
-  1. Validates the `api_key`.
-  2. Parses the `fqdn` to determine the matching managed zone.
-  3. Sends the request to Google Cloud DNS to delete the TXT record.
-- **Error Handling**:
-  - Similar to the add endpoint, with specific messages for invalid API keys or unmatched FQDNs.
+- **`dns_manager.py`**
+  - Contains the domain logic for parsing `_acme-challenge.` FQDNs, resolving managed zones, and orchestrating TXT record creation/deletion.
+  - Methods:
+    - `add_txt_record(fqdn, value)` and `remove_txt_record(fqdn, value)` return the list of response objects used by the API.
+    - Internal helpers `_create_txt_record` and `_delete_txt_record` call Google Cloud DNS APIs, mirroring the behavior from the legacy script.
+
+- **`auth.py`**
+  - Provides `require_api_key(api_key, settings)` which raises a FastAPI `HTTPException` if the supplied key is missing from the configured list.
 
 ---
 
-### **Helper Functions**
+## **API Layer (`app/api`)**
 
-#### **`validate_fqdn(fqdn)`**
-- **Purpose**: Validates that an FQDN belongs to a managed zone defined in the configuration.
-- **Logic**:
-  - Checks if the FQDN ends with a known domain from `managed_zones`.
-- **Returns**: `True` if valid, `False` otherwise.
+- **`models.py`**
+  - Defines the Pydantic schemas `DNSChangeRequest` and `DNSChangeResponse` used by the `/v1/dns/*` endpoints.
 
-#### **`create_txt_record(project_id, managed_zone, record_name, txt_value)`**
-- **Purpose**: Sends a request to Google Cloud DNS to create a TXT record.
-- **Input**:
-  - `project_id`: Google Cloud project ID.
-  - `managed_zone`: Name of the managed zone.
-  - `record_name`: Full FQDN for the record.
-  - `txt_value`: Value of the TXT record.
-- **Returns**: API response on success.
-- **Error Handling**:
-  - Logs and raises exceptions for API or internal errors.
+- **`deps.py`**
+  - FastAPI dependency providers that inject `Settings` and `DNSManager` instances into route handlers.
 
-#### **`delete_txt_record(project_id, managed_zone, record_name, txt_value)`**
-- **Purpose**: Sends a request to Google Cloud DNS to delete a TXT record.
-- **Input**:
-  - Same as `create_txt_record`.
-- **Returns**: API response on success.
-- **Error Handling**:
-  - Similar to `create_txt_record`.
-
-#### **`parse_fqdn(fqdn)`**
-- **Purpose**: Determines the managed zone for a given FQDN.
-- **Logic**:
-  1. Ensures the FQDN starts with `_acme-challenge.`.
-  2. Strips the prefix and trailing dot.
-  3. Iterates through possible domain matches in `managed_zones`.
-- **Returns**: The name of the matching managed zone.
-- **Raises**: `ValueError` if no match is found.
-
-#### **`is_api_key_valid(api_key)`**
-- **Purpose**: Checks if an API key is valid.
-- **Input**: `api_key` from the request.
-- **Logic**:
-  - Compares the key against the `api_keys` list in the configuration.
-- **Returns**: `True` if valid, `False` otherwise.
+- **Routes**
+  - `routes/health.py`: Implements `GET /v1/health` and `GET /v1/live` for liveness/readiness checks.
+  - `routes/dns.py`: Implements `POST /v1/dns/add` and `POST /v1/dns/remove`. Each endpoint enforces API-key validation and delegates to `DNSManager`, returning `207 Multi-Status` responses to remain backward compatible.
 
 ---
 
-### **Key Features**
+## **Application Entrypoint (`app/main.py`)**
 
-- **API Security**:
-  - Uses API keys to restrict access. Keys are validated against a list in `config.yaml`.
-- **Multi-FQDN Support**:
-  - The `add` and `remove` endpoints handle multiple FQDNs in a single request.
-- **Logging**:
-  - Detailed logs for debugging and tracking API usage.
-- **Google Cloud Integration**:
-  - Fully integrates with Google Cloud DNS using service account credentials.
-- **Configuration-Driven**:
-  - Highly customizable via `config.yaml`.
+- Houses the FastAPI factory and an async `lifespan` context manager that:
+  - Loads configuration,
+  - Configures logging,
+  - Primes the Google Cloud DNS client.
+- Registers routers, exposes OpenAPI docs at `/docs`, and exports `app` for Gunicorn/Uvicorn workers.
 
 ---
 
-### **Potential Enhancements for the future**
-1. **Rate Limiting**:
-   - Prevent abuse by adding rate limits per API key.
-2. **IP Whitelisting**:
-   - Restrict requests to specific IP ranges for additional security.
-3. **Health Metrics**:
-   - Add detailed metrics for monitoring (e.g., request counts, success rates).
-4. **Improved Validation**:
-   - Enhance validation for `fqdn` and `value` inputs.
+## **Key Behaviors Preserved**
 
-This documentation provides a comprehensive overview of the `gprox.py` script. Let me know if further details are required!
+- Endpoint surface (`/v1/health`, `/v1/live`, `/v1/dns/add`, `/v1/dns/remove`).
+- Use of API keys for authentication.
+- Managed-zone parsing logic to safeguard allowed DNS zones.
+- Multi-status responses with detailed per-request information.
+
+With this structure, each layer (config, services, API) can be unit-tested independently, FastAPI can auto-generate documentation, and the application is ready for modern deployment patterns (Gunicorn workers, Prometheus/OTel instrumentation, etc.).

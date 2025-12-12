@@ -29,7 +29,7 @@ GPROX acts as a secure intermediary between `acme.sh` and Google Cloud DNS, faci
   - Designed to run behind reverse proxies like Traefik.
 
 - **Lightweight and Flexible**:
-  - Built with Flask, leveraging Docker for portability and simplicity.
+  - Implemented with FastAPI behind Gunicorn/Uvicorn workers for production readiness.
   - Configurable via YAML for custom domains, TTL, and API key management.
 
 - **Extensible**:
@@ -39,8 +39,13 @@ GPROX acts as a secure intermediary between `acme.sh` and Google Cloud DNS, faci
 
 ## **Project Components**
 
-### **1. `gprox.py`**
-The core API written in Python using Flask. It provides endpoints for managing DNS TXT records for ACME challenges.
+### **1. FastAPI Application (`app/`)**
+The API is implemented as a modular FastAPI project. Key modules include:
+
+- `app/main.py`: Application factory, router registration, and lifespan hooks that initialize configuration and the Google Cloud DNS client.
+- `app/api/routes/*`: Route modules for health checks and DNS operations built with FastAPI routers.
+- `app/services/*`: Domain services for authentication, DNS parsing, and Google Cloud interactions.
+- `app/core/*`: Configuration loading (YAML + Pydantic) and logging helpers.
 
 - **Key Endpoints**:
   - `POST /v1/dns/add`: Add a TXT record.
@@ -100,7 +105,8 @@ A helper script for automating SSL certificate renewal and deployment.
 5. Run the container:
    ```bash
    docker run -d --name gprox -p 8080:8080 \
-     -v /path/to/config.yaml:/etc/gprox/config.yaml \
+     -v /path/to/config.yaml:/etc/gprox/config.yaml:ro \
+     -v /path/to/google.json:/etc/gprox/google.json:ro \
      gprox
    ```
 

@@ -1,36 +1,29 @@
-# Use a lightweight Python 3.9 Alpine image as the base
-FROM python:3.12-alpine
+FROM python:3.12-slim
 
-# Install required packages for the application and Google Cloud SDK
-# - curl: for downloading the Google Cloud SDK
-# - bash: required by the Google Cloud SDK installer
-# - openssl: for secure communications
-RUN apk add --no-cache curl bash openssl
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# Install Google Cloud SDK
-# The SDK is used for managing Google Cloud DNS
-RUN curl https://sdk.cloud.google.com > install.sh && \
-    bash install.sh --disable-prompts --install-dir=/ && \
-    rm install.sh
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | tee /etc/apt/keyrings/cloud.google.gpg > /dev/null && \
+    echo "deb [signed-by=/etc/apt/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends google-cloud-cli && \
+    rm -rf /var/lib/apt/lists/*
 
-# Add Google Cloud SDK to the system PATH
-# This ensures the `gcloud` CLI is available for subsequent commands
-ENV PATH="/google-cloud-sdk/bin:$PATH"
-
-# Copy the application code into the image
-# Assumes the application code is in a local `app` directory
-COPY app /app
-COPY requirements.txt /app/requirements.txt
 WORKDIR /app
 
-# Install required Python dependencies
-# Ensure `requirements.txt` is included in the `app` directory
-RUN pip install -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the port the application listens on (8080)
-# This allows external access to the container on this port
+COPY app ./app
+
+RUN useradd --create-home --shell /usr/sbin/nologin gprox && \
+    mkdir -p /etc/gprox && chown -R gprox:gprox /app /etc/gprox
+
+USER gprox
+
 EXPOSE 8080
 
-# Set the default command to run the application
-# This starts the Flask application using Python
-CMD ["python", "gprox.py"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "app.main:app"]
