@@ -32,6 +32,9 @@ GPROX acts as a secure intermediary between `acme.sh` and Google Cloud DNS, faci
   - Implemented with FastAPI behind Gunicorn/Uvicorn workers for production readiness.
   - Configurable via YAML for custom domains, TTL, and API key management.
 
+- **Built-in Metrics**:
+  - Exposes Prometheus-compatible metrics at `/metrics`, including per-operation counters for TXT record changes.
+
 - **Extensible**:
   - Built with simplicity in mind, allowing contributors to add features like rate limiting, IP whitelisting, and more.
 
@@ -174,6 +177,14 @@ acme.sh --deploy -d "example.com" --deploy-hook synology_dsm
 
 ### **3. Renew Certificates**
 Automate renewal and deployment using `acmerenew.sh` in a scheduled task.
+
+---
+
+## **Observability & Metrics**
+
+- **Prometheus endpoint**: FastAPI instrumentation exposes metrics at `GET /metrics`. Default counters include HTTP request stats plus `gprox_dns_requests_total{operation,result=...}` recording TXT add/remove successes and failures.
+- **Scraping in Kubernetes/Docker**: Ensure the `/metrics` path is reachable by your Prometheus scrape jobs. When running Gunicorn with multiple workers or replicas, deploy Prometheus in multiprocess mode (set `PROMETHEUS_MULTIPROC_DIR` and mount a writable tmpfs) so metrics from each worker are aggregated correctly.
+- **Logging**: Standardized structured logging can be forwarded to Google Cloud Logging or another aggregator. Configure log levels through `config.yaml`.
 
 ---
 

@@ -5,3 +5,5 @@ google-api-python-client>=2.70.0
 google-auth>=2.16.0
 google-auth-httplib2>=0.1.0
 PyYAML>=6.0
+prometheus-client>=0.20.0
+prometheus-fastapi-instrumentator>=6.1.0

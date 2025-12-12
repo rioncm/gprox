@@ -2,6 +2,9 @@
 
 The original monolithic `gprox.py` script has been replaced with a modular FastAPI project. This document summarizes the major modules, how they interact, and where core functionality lives.
 
+- **Observability (`app/observability/metrics.py`)**
+  - Defines Prometheus counters (e.g., `gprox_dns_requests_total`) referenced by services and exposed through the FastAPI instrumentation.
+
 ---
 
 ## **Core Modules (`app/core`)**
@@ -26,6 +29,7 @@ The original monolithic `gprox.py` script has been replaced with a modular FastA
   - Methods:
     - `add_txt_record(fqdn, value)` and `remove_txt_record(fqdn, value)` return the list of response objects used by the API.
     - Internal helpers `_create_txt_record` and `_delete_txt_record` call Google Cloud DNS APIs, mirroring the behavior from the legacy script.
+  - Emits Prometheus counters through `app.observability.metrics.dns_requests_total` to track operation successes/failures.
 
 - **`auth.py`**
   - Provides `require_api_key(api_key, settings)` which raises a FastAPI `HTTPException` if the supplied key is missing from the configured list.
@@ -53,6 +57,7 @@ The original monolithic `gprox.py` script has been replaced with a modular FastA
   - Configures logging,
   - Primes the Google Cloud DNS client.
 - Registers routers, exposes OpenAPI docs at `/docs`, and exports `app` for Gunicorn/Uvicorn workers.
+- Integrates `prometheus-fastapi-instrumentator` to expose HTTP metrics at `/metrics`.
 
 ---
 

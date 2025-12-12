@@ -2,6 +2,7 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV TMPDIR=/tmp
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl gnupg && \
@@ -20,10 +21,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 
 RUN useradd --create-home --shell /usr/sbin/nologin gprox && \
-    mkdir -p /etc/gprox && chown -R gprox:gprox /app /etc/gprox
+    mkdir -p /etc/gprox && \
+    mkdir -p /tmp && chmod 1777 /tmp && \
+    chown -R gprox:gprox /app /etc/gprox /tmp
 
 USER gprox
 
-EXPOSE 8080
+EXPOSE 8888
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "app.main:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8888", "--worker-tmp-dir", "/tmp", "app.main:app"]

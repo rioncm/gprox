@@ -1,0 +1,33 @@
+# Bytecode / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+
+# Virtual environments
+.venv/
+venv/
+env/
+.build/
+.vscode/
+
+# Tooling / coverage
+.coverage
+coverage.xml
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker / runtime
+.env
+*.log
+tmp/

@@ -10,6 +10,7 @@ from typing import Dict, List
 from googleapiclient.errors import HttpError
 
 from app.core.config import Settings
+from app.observability.metrics import dns_requests_total
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ class DNSManager:
                     "message": "Missing required fields 'fqdn' or 'value'",
                 }
             )
+            dns_requests_total.labels(operation=operation, result="error").inc()
             return responses
 
         try:
@@ -61,9 +63,11 @@ class DNSManager:
                     "response": response,
                 }
             )
+            dns_requests_total.labels(operation=operation, result="success").inc()
         except ValueError as exc:
             logger.warning(str(exc))
             responses.append({"fqdn": fqdn, "status": "error", "message": str(exc)})
+            dns_requests_total.labels(operation=operation, result="error").inc()
         except HttpError as exc:
             logger.error("Failed to %s TXT record for %s: %s", operation, fqdn, exc)
             action = "add" if operation == "add" else "remove"
@@ -74,6 +78,7 @@ class DNSManager:
                     "message": f"Failed to {action} TXT record",
                 }
             )
+            dns_requests_total.labels(operation=operation, result="error").inc()
         except Exception as exc:
             logger.exception("Unexpected error for %s", fqdn)
             responses.append(
@@ -83,6 +88,7 @@ class DNSManager:
                     "message": "An unexpected error occurred",
                 }
             )
+            dns_requests_total.labels(operation=operation, result="error").inc()
 
         return responses
 

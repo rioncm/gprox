@@ -5,6 +5,7 @@ FastAPI application entrypoint.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.routes import dns, health
 from app.core.config import get_settings
@@ -30,6 +31,11 @@ def create_application() -> FastAPI:
     )
     application.include_router(health.router)
     application.include_router(dns.router)
+    Instrumentator(
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+        excluded_handlers={"/metrics"},
+    ).instrument(application).expose(application)
     return application
 
 
