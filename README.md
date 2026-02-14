@@ -158,6 +158,8 @@ ttl: 300
 - **`gcloud_project`**: Google Cloud project ID.
 - **`managed_zones`**: Define your DNS managed zones.
 - **`api_keys`**: List of valid API keys for authenticating requests.
+- **`dns_api_num_retries`**: Retry count for transient Google DNS API failures.
+- **`dns_api_timeout_seconds`**: Per-request HTTP timeout for Google DNS API calls.
 
 ---
 

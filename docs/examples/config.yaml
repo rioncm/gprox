@@ -36,3 +36,5 @@ api_keys:
 # DNS settings
 ttl: 300  # Default TTL for DNS records (in seconds).
 # Adjust TTL based on your DNS propagation needs. Shorter TTLs may increase query traffic.
+dns_api_num_retries: 3  # Retries for transient Google DNS API failures.
+dns_api_timeout_seconds: 10  # Per-request HTTP timeout to Google APIs.

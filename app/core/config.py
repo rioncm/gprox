@@ -25,6 +25,16 @@ class Settings(BaseModel):
     managed_zones: Dict[str, str] = Field(default_factory=dict, description="Allowed managed zones.")
     api_keys: List[str] = Field(default_factory=list, description="Valid API keys.")
     ttl: int = Field(default=300, description="Default TTL for DNS records.")
+    dns_api_num_retries: int = Field(
+        default=3,
+        ge=0,
+        description="Number of retries for Google DNS API requests.",
+    )
+    dns_api_timeout_seconds: int = Field(
+        default=10,
+        ge=1,
+        description="HTTP timeout in seconds for Google DNS API requests.",
+    )
 
 
 def _config_path() -> Path:

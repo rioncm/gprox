@@ -5,8 +5,10 @@ Domain logic for managing DNS TXT records.
 from __future__ import annotations
 
 import logging
+import ssl
 from typing import Dict, List
 
+from google.auth.exceptions import RefreshError, TransportError
 from googleapiclient.errors import HttpError
 
 from app.core.config import Settings
@@ -79,6 +81,22 @@ class DNSManager:
                 }
             )
             dns_requests_total.labels(operation=operation, result="error").inc()
+        except (RefreshError, TransportError, ssl.SSLError, OSError) as exc:
+            logger.error(
+                "Google API transport/auth failure while attempting to %s TXT record for %s: %s",
+                operation,
+                fqdn,
+                exc,
+            )
+            action = "add" if operation == "add" else "remove"
+            responses.append(
+                {
+                    "fqdn": fqdn,
+                    "status": "error",
+                    "message": f"Failed to {action} TXT record due to Google API connectivity/authentication issue",
+                }
+            )
+            dns_requests_total.labels(operation=operation, result="error").inc()
         except Exception as exc:
             logger.exception("Unexpected error for %s", fqdn)
             responses.append(
@@ -113,7 +131,7 @@ class DNSManager:
             managedZone=managed_zone,
             body=body,
         )
-        response = request.execute()
+        response = request.execute(num_retries=self.settings.dns_api_num_retries)
         logger.info("TXT record added: %s with value %s", record_name, txt_value)
         return response
 
@@ -141,7 +159,7 @@ class DNSManager:
                 "deletions": [body],
             },
         )
-        response = request.execute()
+        response = request.execute(num_retries=self.settings.dns_api_num_retries)
         logger.info("TXT record removed: %s with value %s", record_name, txt_value)
         return response
 
